@@ -1,0 +1,55 @@
+/**
+ * KafkaAdminClient.jave Created on 2019-12-30 09:57:04
+ * Copyright (c) 2019 Reed.  All Rights Reserved.
+ *
+ * @project workspace
+ * @package org.reed.kafka
+ * @author Administrator
+ * @version 1.0.0
+ */
+package org.reed.kafka;
+
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * <p>Title:  reed-springbootup</p>
+ * <p>Description: create topic client</p>
+ */
+@EnableConfigurationProperties(KafkaProperties.class)
+@Conditional({ReedKafkaCondition.class})
+@Component
+public class ReedKafkaAdminClientConfiguration {
+    @Autowired
+    private KafkaProperties kafkaProperties;
+
+    public KafkaAdmin reedKafkaAdmin() {
+        KafkaAdmin admin = null;
+        Map<String, Object> props = new HashMap<>();
+        //配置Kafka实例的连接地址
+        if (kafkaProperties != null && !"".equals(kafkaProperties)) {
+            props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaProperties);
+            admin = new KafkaAdmin(props);
+            admin.setAutoCreate(false);
+        }
+        return admin;
+    }
+
+    public AdminClient adminClient() {
+        KafkaAdmin kafkaAdmin = reedKafkaAdmin();
+        if (kafkaAdmin != null) {
+            return AdminClient.create(kafkaAdmin.getConfig());
+        } else {
+            return null;
+        }
+    }
+}

@@ -1,0 +1,104 @@
+/**
+ * KafkaConsumerProperties.jave Created on 2020-01-06 15:59:24
+ * Copyright (c) 2020 Reed.  All Rights Reserved.
+ *
+ * @project workspace
+ * @package org.reed.kafka
+ * @author Administrator
+ * @version 1.0.0
+ */
+package org.reed.kafka;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Conditional;
+
+/**
+ * <p>Title: rich-springbootup</p>
+ * <p>Description: reed-kafka configuration</p>
+ */
+@ConfigurationProperties(prefix = "reed.kafka.consumer")
+@Conditional({ReedKafkaCondition.class})
+public class ReedKafkaConsumerProperties {
+    private String bootstrapServers;
+    private String groupId;
+    private Boolean autoCommit;
+    private Integer autoCommitIntervalMs;
+    private String autoOffsetReset;
+    private Integer maxPollRecords;
+    private Integer sessionTimeout;
+    private Boolean batchListener;
+    private Integer concurrency;
+
+
+    public String getBootstrapServers() {
+        return bootstrapServers;
+    }
+
+    public void setBootstrapServers(String bootstrapServers) {
+        this.bootstrapServers = bootstrapServers;
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
+    }
+
+    public Boolean getAutoCommit() {
+        return autoCommit;
+    }
+
+    public void setAutoCommit(Boolean autoCommit) {
+        this.autoCommit = autoCommit;
+    }
+
+    public Integer getAutoCommitIntervalMs() {
+        return autoCommitIntervalMs;
+    }
+
+    public void setAutoCommitIntervalMs(Integer autoCommitIntervalMs) {
+        this.autoCommitIntervalMs = autoCommitIntervalMs;
+    }
+
+    public String getAutoOffsetReset() {
+        return autoOffsetReset;
+    }
+
+    public void setAutoOffsetReset(String autoOffsetReset) {
+        this.autoOffsetReset = autoOffsetReset;
+    }
+
+    public Integer getMaxPollRecords() {
+        return maxPollRecords;
+    }
+
+    public void setMaxPollRecords(Integer maxPollRecords) {
+        this.maxPollRecords = maxPollRecords;
+    }
+
+    public Integer getSessionTimeout() {
+        return sessionTimeout;
+    }
+
+    public void setSessionTimeout(Integer sessionTimeout) {
+        this.sessionTimeout = sessionTimeout;
+    }
+
+    public Boolean getBatchListener() {
+        return batchListener;
+    }
+
+    public void setBatchListener(Boolean batchListener) {
+        this.batchListener = batchListener;
+    }
+
+    public Integer getConcurrency() {
+        return concurrency;
+    }
+
+    public void setConcurrency(Integer concurrency) {
+        this.concurrency = concurrency;
+    }
+}

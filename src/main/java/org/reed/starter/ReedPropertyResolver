@@ -1,0 +1,134 @@
+/**
+ * E5Projects @ org.reed.starter/ReedPropertyResolver.java
+ */
+package org.reed.starter;
+
+import org.reed.bootup.SpringBootBootup;
+import org.reed.log.ReedLogger;
+import org.reed.system.ReedContext;
+import org.reed.utils.DESUtil;
+import org.reed.utils.EnderUtil;
+import org.reed.utils.StringUtil;
+import org.springframework.core.env.MapPropertySource;
+
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @author chenxiwen
+ * @createTimestamp 2019年12月27日 上午10:23
+ * @description
+ */
+public final class ReedPropertyResolver {
+
+    private static final String mode = ReedContext.getString("mode", "");
+
+    public static final int handle(final MapPropertySource propertySource){
+        int counter = 0;
+        ReedLogger.info("Handle Reed Property Source:["+propertySource.getName()+"]");
+        Map<String, Object> config = (Map<String, Object>) propertySource.getSource();
+        Iterator<Map.Entry<String, Object>> iterator = config.entrySet().iterator();
+        while(iterator.hasNext()){
+            Map.Entry<String, Object> entry = iterator.next();
+            String key = entry.getKey();
+            //ignore config starts with some prefix
+            if(key.contains(SpringBootBootup.DOT)){
+                String prefix = key.split("\\"+SpringBootBootup.DOT)[0];
+                boolean removed = false;
+                for(String pre : SpringBootBootup.IGNORE_PREFIX){
+                    if(pre.equalsIgnoreCase(prefix)){
+                        Object value = config.get(key);
+                        iterator.remove();
+                        if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+                            System.out.println(EnderUtil.getDevInfo() + " - Reed Framework Has Removed [" + key + "=" + value + "] From Configuration File When It Loaded!");
+                        }
+                        removed = config.containsKey(key);
+                        break;
+                    }
+                }
+                if(removed){
+                    counter++;
+                    continue;
+                }
+            }
+            String value = config.get(key).toString();
+            if(StringUtil.isContains(StringUtil.Reed_ENV, value)){ //读取自定义标识ReedEnv{} 匹配成功则表示要去环境变量中读取ReedEnv{}中的值
+                if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+                    System.out.println(EnderUtil.getDevInfo() + " - found Matched Pattern[" + StringUtil.Reed_ENV.toString() + "] in " + value);
+                }
+                List<String> matchedList = StringUtil.getMatched(StringUtil.Reed_ENV, value);
+                for(String str : matchedList){
+                    if(!StringUtil.isEmpty(str)){
+                        if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+                            System.out.println(EnderUtil.getDevInfo() + " - placeholder[" + str + "]");
+                        }
+                        String envKey = StringUtil.extractVal(str);
+                        if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+                            System.out.println(EnderUtil.getDevInfo() + " - extract environment key from placeholder[" + str + "] as " + envKey);
+                        }
+                        String envVal = System.getenv(envKey);
+                        envVal = envVal == null?"":envVal;
+                        if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+                            System.out.println(EnderUtil.getDevInfo() + " - get environment: " + envKey + "=" + envVal);
+                        }
+                        if(!StringUtil.isEmpty(envVal)){
+                            if(StringUtil.isMatched(StringUtil.Reed_CIPHER, envVal)){
+                                envVal = StringUtil.decryptCiphertext(envVal, DESUtil.DEFAULT_SECURITY_CODE);
+                            }
+                            value = value.replace(str, envVal);
+                            updateSysEnv(config, key, value);
+                            counter++;
+                            if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+                                System.out.println(EnderUtil.getDevInfo() + " After SetEnv -> EnvKey:" + key + ", EnvVal:" + config.get(key).toString() + ", EnvValInstance:" + config.get(key).getClass());
+                            }
+                        }else{
+                            if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")){
+                                System.out.println(EnderUtil.getDevInfo()+" - "+envKey+" is empty skip this line!");
+                            }
+                        }
+                    }
+                }
+
+            }
+            if(StringUtil.isContains(StringUtil.Reed_CIPHER, value)){  //匹配到了加密串ReedCipher{xxx}
+                value = StringUtil.decryptCiphertext(value, DESUtil.DEFAULT_SECURITY_CODE);
+                updateSysEnv(config, key, value);
+                counter++;
+                if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+                    System.out.println(EnderUtil.getDevInfo() + " After SetEnv -> EnvKey:" + key + ", EnvVal:" + config.get(key).toString() + ", EnvValInstance:" + config.get(key).getClass());
+                }
+            }
+
+        }
+        return counter;
+    }
+
+    private static void updateSysEnv(final Map m, final String key, final String value){
+        if(!StringUtil.isEmpty(System.getenv(key))){
+            return;
+        }
+        synchronized (m){
+            m.put(key, value);
+        }
+    }
+
+    public static int resetReedFrameworkConfig(final MapPropertySource target, final MapPropertySource source){
+        int counter = 0;
+        if(target == null || target.getSource().size()==0 || source == null || source.getSource().size() == 0){
+            return counter;
+        }
+        ReedLogger.info("Reset Reed Framework Property Source:["+target.getName()+"]");
+        Map<String, Object> config = (Map<String, Object>) target.getSource();
+        Iterator<Map.Entry<String, Object>> iterator = config.entrySet().iterator();
+        while(iterator.hasNext()){
+            Map.Entry<String, Object> entry = iterator.next();
+            String key = entry.getKey();
+            if(source.containsProperty(key)){
+                updateSysEnv(target.getSource(), key, source.getProperty(key).toString());
+                counter++;
+            }
+        }
+        return counter;
+    }
+}

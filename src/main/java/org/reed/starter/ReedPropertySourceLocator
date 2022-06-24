@@ -1,0 +1,27 @@
+/**
+ * E5Projects @ org.reed.starter/ReedPropertySourceLocator.java
+ */
+package org.reed.starter;
+
+import org.reed.define.Order;
+import org.springframework.cloud.bootstrap.config.PropertySourceLocator;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.PropertySource;
+
+/**
+ * @author chenxiwen
+ * @createTimestamp 2019年12月27日 上午10:00
+ * @description
+ */
+@Order(Integer.MIN_VALUE)
+public class ReedPropertySourceLocator implements PropertySourceLocator {
+    /**
+     * @param environment The current Environment.
+     * @return A PropertySource, or null if there is none.
+     * @throws IllegalStateException if there is a fail-fast condition.
+     */
+    @Override
+    public PropertySource<?> locate(Environment environment) {
+        return null;
+    }
+}

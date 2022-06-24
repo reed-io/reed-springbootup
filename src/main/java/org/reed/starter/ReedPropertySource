@@ -1,0 +1,24 @@
+/**
+ * E5Projects @ org.reed.starter/ReedPropertySource.java
+ */
+package org.reed.starter;
+
+
+import org.springframework.core.env.MapPropertySource;
+
+import java.util.Map;
+
+/**
+ * @author chenxiwen
+ * @createTimestamp 2019年12月27日 上午10:03
+ * @description
+ */
+public final class ReedPropertySource extends MapPropertySource {
+
+    public static final String REED = "reed";
+
+    public ReedPropertySource(String name, Map<String, Object> source) {
+        super(name, source);
+    }
+
+}

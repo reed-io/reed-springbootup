@@ -1,0 +1,21 @@
+/**
+ * E5Projects @ org.reed.starter/ReedBootstrapConfiguration.java
+ */
+package org.reed.starter;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * @author chenxiwen
+ * @createTimestamp 2019年12月27日 上午10:31
+ * @description
+ */
+@Configuration
+public class ReedBootstrapConfiguration {
+
+    @Bean
+    public ReedPropertySourceLocator reedPropertySourceLocator(){
+        return new ReedPropertySourceLocator();
+    }
+}

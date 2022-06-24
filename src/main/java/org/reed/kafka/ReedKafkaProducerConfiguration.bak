@@ -1,0 +1,102 @@
+/**
+ * KafkaProducer.jave Created on 2019-12-27 10:48:41
+ * Copyright (c) 2019 Reed.  All Rights Reserved.
+ *
+ * @project workspace
+ * @package org.reed.kafka
+ * @author Administrator
+ * @version 1.0.0
+ */
+package org.reed.kafka;
+
+import org.reed.log.ReedLogger;
+import com.alibaba.fastjson2.JSON;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * <p>Title: reed-springbootup</p>
+ * <p>Description: producer tools of kafka</p>
+ */
+@EnableConfigurationProperties(ReedKafkaProducerProperties.class)
+@Configuration
+@EnableKafka
+@RefreshScope
+@Conditional({ReedKafkaCondition.class})
+public class ReedKafkaProducerConfiguration {
+
+    @Autowired
+    private ReedKafkaProducerProperties rfKafkaProducerProperties;
+
+    /**
+     * kafka生产者回调函数
+     */
+    private ListenableFutureCallback<SendResult<String, Object>> callback;
+
+    public ReedKafkaProducerConfiguration() {
+    }
+
+    public SendResult<String, Object> sendMessageSyncResult(String topic, Object bean) throws IOException{
+        KafkaTemplate kafkaTemplate = new KafkaTemplate(producerFactory(), true);
+        String ms = JSON.toJSONString(bean);
+        ListenableFuture<SendResult<String, Object>> future = kafkaTemplate.send(topic, ms);
+        try {
+            SendResult<String, Object> result = future.get();
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public boolean sendMessageSync(String topic, Object o) throws IOException{
+        KafkaTemplate kafkaTemplate = new KafkaTemplate(producerFactory(), true);
+        ListenableFuture<SendResult<String, Object>> future = kafkaTemplate.send(topic, o);
+        try {
+            future.get();
+            return true;
+        } catch (Exception e) {
+            ReedLogger.error(e.getMessage());
+            return false;
+        }
+    }
+
+    //生产者配置
+    private Map<String, Object> senderProps() throws IOException {
+        Map<String, Object> props = new HashMap<>();
+        //连接地址
+        if(rfKafkaProducerProperties.getBootstrapServers()==null || "".equals(rfKafkaProducerProperties.getBootstrapServers())){
+            ReedLogger.error("reed.kafka.producer.bootstrap-servers is null");
+            throw new IllegalArgumentException();
+        }
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, rfKafkaProducerProperties.getBootstrapServers());
+        //重试，0为不启用重试机制
+        props.put(ProducerConfig.RETRIES_CONFIG, rfKafkaProducerProperties.getRetries());
+        //键的序列化方式
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        //值的序列化方式
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        return props;
+    }
+
+    //根据senderProps填写的参数创建生产者工厂
+    public ProducerFactory<Integer, String> producerFactory() throws IOException{
+        return new DefaultKafkaProducerFactory<>(senderProps());
+    }
+}

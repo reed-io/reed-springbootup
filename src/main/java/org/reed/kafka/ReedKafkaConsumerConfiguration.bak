@@ -1,0 +1,156 @@
+/**
+ * KafkaConfiguration.jave Created on 2019-12-26 13:56:41
+ * Copyright (c) 2019 Reed.  All Rights Reserved.
+ *
+ * @project rich-springbootup
+ * @package org.reed.kafka
+ * @author huangdongxing
+ * @version 1.0.0
+ */
+package org.reed.kafka;
+
+import org.reed.log.ReedLogger;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.ContainerProperties;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * <p>Title: reed-springbootup</p>
+ * <p>Description: customer configuration</p>
+ */
+@EnableConfigurationProperties(ReedKafkaConsumerProperties.class)
+@Configuration
+@EnableKafka
+@RefreshScope
+@Conditional({ReedKafkaCondition.class})
+public class ReedKafkaConsumerConfiguration {
+    @Autowired
+    private ReedKafkaConsumerProperties rfKafkaConsumerProperties;
+
+    @Bean
+    @RefreshScope
+    public ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory() throws IOException {
+        ConcurrentKafkaListenerContainerFactory<Integer, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        factory.setAutoStartup(false);
+        return factory;
+    }
+
+    public ConsumerFactory<Integer, String> consumerFactory() throws IOException {
+        return new DefaultKafkaConsumerFactory<>(consumerProps());
+    }
+
+    private Map<String, Object> consumerProps() throws IOException {
+        Map<String, Object> props = new HashMap<String, Object>();
+        //连接地址
+        if ("".equals(rfKafkaConsumerProperties.getBootstrapServers()) || null == rfKafkaConsumerProperties.getBootstrapServers()) {
+            ReedLogger.error("reed.kafka.consumer.bootstrap-servers is null");
+            throw new IllegalArgumentException();
+        }
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, rfKafkaConsumerProperties.getBootstrapServers());
+        //GroupID
+        if ("".equals(rfKafkaConsumerProperties.getGroupId()) || null == rfKafkaConsumerProperties.getGroupId()) {
+            ReedLogger.error("reed.kafka.consumer.group-id is null");
+            throw new IllegalArgumentException();
+        }
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, rfKafkaConsumerProperties.getGroupId());
+
+        if ("true".equals(rfKafkaConsumerProperties.getAutoCommit())) {
+            props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, rfKafkaConsumerProperties.getAutoCommit());
+
+            props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, rfKafkaConsumerProperties.getAutoCommitIntervalMs());
+        }
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, rfKafkaConsumerProperties.getSessionTimeout());
+
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, rfKafkaConsumerProperties.getMaxPollRecords());
+
+        //props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
+
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        return props;
+    }
+
+
+    private Map<String, Object> ackConsumerProps() throws IOException {
+        Map<String, Object> props = new HashMap<String, Object>();
+        //连接地址
+        if ("".equals(rfKafkaConsumerProperties.getBootstrapServers()) || null == rfKafkaConsumerProperties.getBootstrapServers()) {
+            ReedLogger.error("reed.kafka.consumer.bootstrap-servers is null");
+            throw new IllegalArgumentException();
+        }
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, rfKafkaConsumerProperties.getBootstrapServers());
+        //GroupID
+        if ("".equals(rfKafkaConsumerProperties.getGroupId()) || null == rfKafkaConsumerProperties.getGroupId()) {
+            ReedLogger.error("reed.kafka.consumer.group-id is null");
+            throw new IllegalArgumentException();
+        }
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, rfKafkaConsumerProperties.getGroupId());
+
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, rfKafkaConsumerProperties.getSessionTimeout());
+
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, rfKafkaConsumerProperties.getMaxPollRecords());
+
+        //props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
+
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        return props;
+    }
+
+
+    @Bean("batchContainerFactory")
+    public ConcurrentKafkaListenerContainerFactory listenerContainer() throws IOException {
+        ConcurrentKafkaListenerContainerFactory container = new ConcurrentKafkaListenerContainerFactory();
+        container.setConsumerFactory(new DefaultKafkaConsumerFactory(consumerProps()));
+        if ("".equals(rfKafkaConsumerProperties.getConcurrency()) || null == rfKafkaConsumerProperties.getConcurrency()) {
+            ReedLogger.error("reed.kafka.consumer.listener.concurrency is null");
+            throw new IllegalArgumentException();
+        }
+        container.setConcurrency(rfKafkaConsumerProperties.getConcurrency());
+        if ("".equals(rfKafkaConsumerProperties.getBatchListener()) || null == rfKafkaConsumerProperties.getBatchListener()) {
+            ReedLogger.error("reed.kafka.consumer.batchListener is null");
+            throw new IllegalArgumentException();
+        }
+        container.setBatchListener(rfKafkaConsumerProperties.getBatchListener());
+        return container;
+    }
+
+    @Bean("ackContainerFactory")
+    public ConcurrentKafkaListenerContainerFactory ackContainerFactory() throws IOException {
+        ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
+        factory.setConsumerFactory(new DefaultKafkaConsumerFactory(ackConsumerProps()));
+        factory.setBatchListener(rfKafkaConsumerProperties.getBatchListener());
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        factory.setConsumerFactory(new DefaultKafkaConsumerFactory(consumerProps()));
+        return factory;
+    }
+
+    @Bean("delayContainerFactory")
+    public ConcurrentKafkaListenerContainerFactory delayContainerFactory() throws IOException {
+        ConcurrentKafkaListenerContainerFactory container = new ConcurrentKafkaListenerContainerFactory();
+        container.setConsumerFactory(consumerFactory());
+        //禁止自动启动
+        container.setAutoStartup(false);
+        return container;
+    }
+
+}

@@ -1,0 +1,40 @@
+/**
+ * ReedKafkaProducerProperties.jave Created on 2020-01-06 16:46:50
+ * Copyright (c) 2020 Reed.  All Rights Reserved.
+ *
+ * @project workspace
+ * @package org.reed.kafka
+ * @author Administrator
+ * @version 1.0.0
+ */
+package org.reed.kafka;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Conditional;
+
+/**
+ * <p>Title: reed-springbootup</p>
+ * <p>Description: reed-kafka-producer-proerties</p>
+ */
+@ConfigurationProperties(prefix = "reed.kafka.producer")
+@Conditional({ReedKafkaCondition.class})
+public class ReedKafkaProducerProperties {
+    private String bootstrapServers;
+    private String retries;
+
+    public String getBootstrapServers() {
+        return bootstrapServers;
+    }
+
+    public void setBootstrapServers(String bootstrapServers) {
+        this.bootstrapServers = bootstrapServers;
+    }
+
+    public String getRetries() {
+        return retries;
+    }
+
+    public void setRetries(String retries) {
+        this.retries = retries;
+    }
+}

@@ -1,0 +1,90 @@
+/**
+ * E5Projects @ org.reed.starter/ReedPropertySourceBootstrapConfigurationInitializer.java
+ */
+package org.reed.starter;
+
+import org.reed.bootup.ReedStarter;
+import org.reed.log.ReedLogger;
+import org.reed.utils.EnderUtil;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.bootstrap.BootstrapApplicationListener;
+import org.springframework.cloud.bootstrap.config.PropertySourceBootstrapProperties;
+import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+import org.springframework.core.env.*;
+
+import java.lang.annotation.Annotation;
+import java.util.Collection;
+
+/**
+ * @author chenxiwen
+ * @createTimestamp 2019年12月27日 上午11:06
+ * @description
+ */
+@Configuration
+@EnableConfigurationProperties(PropertySourceBootstrapProperties.class)
+public class ReedPropertySourceBootstrapConfigurationInitializer implements
+        ApplicationContextInitializer<ConfigurableApplicationContext>, Ordered {
+
+    private int order = Ordered.LOWEST_PRECEDENCE;
+
+    /**
+     * Initialize the given application context.
+     *
+     * @param applicationContext the application to configure
+     */
+    @Override
+    public void initialize(ConfigurableApplicationContext applicationContext) {
+//        Map map = applicationContext.getBeansOfType(ReedStarter.class);
+//        try {
+//            Class<?> clz = applicationContext.getClassLoader().loadClass("org.reed.bootup.ReedStarter");
+//            Annotation[] arr = clz.getAnnotations();
+//            for(Annotation annotation : arr){
+//                System.out.println(annotation.toString());
+//            }
+//        } catch (ClassNotFoundException e) {
+//            e.printStackTrace();
+//        }
+//        ReedStarter starter = applicationContext.getBean(ReedStarter.class);
+        ConfigurableEnvironment environment = applicationContext.getEnvironment();
+        MutablePropertySources mps =  environment.getPropertySources();
+        PropertySource reedPropertyResource = mps.get("reed");
+        PropertySource<?> bootstrapPropertySource = mps.get(BootstrapApplicationListener.BOOTSTRAP_PROPERTY_SOURCE_NAME
+                + "Properties");
+        if(bootstrapPropertySource != null && bootstrapPropertySource instanceof CompositePropertySource){
+            bootstrapPropertySource = (CompositePropertySource)bootstrapPropertySource;
+            Collection<PropertySource<?>> compositeSources =  ((CompositePropertySource) bootstrapPropertySource).getPropertySources();
+            for(PropertySource propertySource : compositeSources){
+                if(propertySource instanceof CompositePropertySource && propertySource.getName().contains("NACOS")){
+                    ReedLogger.info(EnderUtil.devInfo()+" - Found NACOS Configuration!");
+                    Collection<PropertySource<?>> nacosPropertySources = ((CompositePropertySource) propertySource).getPropertySources();
+                    for(PropertySource nacosPropertySource : nacosPropertySources){
+//                        MapPropertySource mapPropertySource = (MapPropertySource)nacosPropertySource.getSource();
+                        ReedPropertyResolver.handle((MapPropertySource)nacosPropertySource);
+                        ReedPropertyResolver.resetReedFrameworkConfig((MapPropertySource)nacosPropertySource,
+                                (MapPropertySource)reedPropertyResource);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the order value of this object.
+     * <p>Higher values are interpreted as lower priority. As a consequence,
+     * the object with the lowest value has the highest priority (somewhat
+     * analogous to Servlet {@code load-on-startup} values).
+     * <p>Same order values will result in arbitrary sort positions for the
+     * affected objects.
+     *
+     * @return the order value
+     * @see #HIGHEST_PRECEDENCE
+     * @see #LOWEST_PRECEDENCE
+     */
+    @Override
+    public int getOrder() {
+        return order;
+    }
+}

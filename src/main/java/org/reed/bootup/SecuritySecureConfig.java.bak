@@ -1,0 +1,27 @@
+/**
+ * E5Projects @ org.reed.bootup/SecuritySecureConfig.java
+ */
+package org.reed.bootup;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+
+/**
+ * @author chenxiwen
+ * @createTimestamp 2019年12月16日 上午10:44
+ * @description
+ */
+@Configuration
+public class SecuritySecureConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        SavedRequestAwareAuthenticationSuccessHandler successHandler = new SavedRequestAwareAuthenticationSuccessHandler();
+        successHandler.setDefaultTargetUrl("/");
+
+        http.authorizeRequests()
+                .antMatchers("/actuator/**").authenticated();
+    }
+}

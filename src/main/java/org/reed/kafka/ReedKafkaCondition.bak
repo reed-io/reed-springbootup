@@ -1,0 +1,36 @@
+/**
+ * KafkaCondition.jave Created on 2020-01-06 15:54:23
+ * Copyright (c) 2020 Reed.  All Rights Reserved.
+ *
+ * @project workspace
+ * @package org.reed.kafka
+ * @author Administrator
+ * @version 1.0.0
+ */
+package org.reed.kafka;
+
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.core.env.Environment;
+import org.springframework.core.type.AnnotatedTypeMetadata;
+
+/**
+ * <p>Title: springboot-</p>
+ * <p>Description: kafka start condition</p>
+ */
+public class ReedKafkaCondition implements Condition {
+    @Override
+    public boolean matches(ConditionContext conditionContext, AnnotatedTypeMetadata annotatedTypeMetadata) {
+        Environment environment = conditionContext.getEnvironment();
+        String enableKafka = environment.getProperty("reed.kafka.enable");
+        if ("".equals(enableKafka) || enableKafka == null) {
+            return false;
+        } else {
+            if (enableKafka.contains("true")) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+}

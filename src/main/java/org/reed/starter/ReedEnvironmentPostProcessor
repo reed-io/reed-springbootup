@@ -1,0 +1,259 @@
+/**
+ * E5Projects @ org.reed.starter/ReedEnvironmentPostProcessor.java
+ */
+package org.reed.starter;
+
+import org.reed.bootup.ReedStarter;
+import org.reed.bootup.ReedUnifiedConfig;
+import org.reed.bootup.SpringBootBootup;
+import org.reed.system.ReedContext;
+import org.reed.system.SysEngine;
+import org.reed.utils.DESUtil;
+import org.reed.utils.EnderUtil;
+import org.reed.utils.StringUtil;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.env.EnvironmentPostProcessor;
+import org.springframework.boot.env.OriginTrackedMapPropertySource;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.cloud.bootstrap.BootstrapApplicationListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+
+import java.io.IOException;
+import java.util.*;
+
+/**
+ * @author chenxiwen
+ * @createTimestamp 2019年12月19日 上午9:58
+ * @description
+ */
+@Order(Ordered.LOWEST_PRECEDENCE)
+public class ReedEnvironmentPostProcessor implements EnvironmentPostProcessor {
+    private final String REED_UNIFIED_CONFIG_KEY_WORD = "nacos";
+    private final String REED_UNIFIED_CONFIG_SERVER_KEY = "spring.cloud.nacos.config.server-addr";
+    private final String REED_UNIFIED_CONFIG_GROUP_KEY = "spring.cloud.nacos.config.group";
+    private final String REED_UNIFIED_CONFIG_NAMESPACE_KEY = "spring.cloud.nacos.config.namespace";
+    private final String REED_UNIFIED_CONFIG_FILE_EXTENSION_KEY = "spring.cloud.nacos.config.file-extension";
+    private final String REED_UNIFIED_CONFIG_AUTO_REFRESH_KEY = "spring.cloud.nacos.config.file-extension";
+
+
+    private final YamlPropertySourceLoader reedLoader = new YamlPropertySourceLoader();
+    private final Resource reedConfig = new ClassPathResource(ReedPropertySource.REED+".yml");
+
+    private final String mode = ReedContext.getString("mode", "");
+
+    /**
+     * Post-process the given {@code environment}.
+     *
+     * @param environment the environment to post-process
+     * @param application the application to which the environment belongs
+     */
+    @Override
+    public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        ReedUnifiedConfig reedUnifiedConfig = application.getMainApplicationClass().getAnnotation(ReedUnifiedConfig.class);
+
+        //bootstrap priority   .yml > .properties
+//        Map<String, String> config = getConfig(bootstrapPropertySources, "nacos");
+
+//        if(reedUnifiedConfig != null){
+//            //bootstrap exists
+//            if(bootstrapPropertySources.size()>0){
+//                replaceBootstrapConfig(bootstrapPropertySources, "", )
+//            }
+//
+//
+//
+//        }
+
+
+        PropertySource<?> reedPropertySource = loadConfigration(reedConfig);
+//        MutablePropertySources mutablePropertySources = environment.getPropertySources();
+        if(reedPropertySource != null){
+//            int handledCount = handleReedPattern(reedPropertySource);
+            int handledCount = ReedPropertyResolver.handle((MapPropertySource)reedPropertySource);
+            if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")){
+                System.out.println("Found And Handle "+handledCount+" Reed PlaceHolders!");
+            }
+            environment.getPropertySources().addFirst(reedPropertySource);
+        }
+
+//        Set<PropertySource<?>> bootstrapPropertySources = getBootstrapPropertySources(environment,
+//                OriginTrackedMapPropertySource.class, BootstrapApplicationListener.BOOTSTRAP_PROPERTY_SOURCE_NAME);
+//        filterBootstrapConfig(bootstrapPropertySources, reedPropertySource);
+    }
+
+    private boolean replaceBootstrapConfig(final Collection<PropertySource<?>> propertySrouces, final String key, final String value){
+        boolean flag = false;
+        //if there are more than one bootstrap property sources, set/replace them all, return true if one/all of them replaced
+        for(PropertySource<?> propertySource : propertySrouces){
+            synchronized (propertySource){
+                Map<String, Object> source = (Map<String, Object>)propertySource.getSource();
+                source.put(key, value);
+                flag = true;
+            }
+        }
+        return flag;
+    }
+
+    private Set<PropertySource<?>> getBootstrapPropertySources(final ConfigurableEnvironment environment, final Class<?> propertySourceType, final String keyWord){
+        Set<PropertySource<?>> set = Collections.emptySet();
+        for(PropertySource<?> propertySource : environment.getPropertySources()){
+            if(propertySource.getName().contains(keyWord) && propertySource.getClass() == propertySourceType){
+                set.add(propertySource);
+            }
+        }
+        return set;
+    }
+
+    private Map<String, String> getConfig(final Collection<PropertySource<?>> propertySources, final String keyWord){
+        Map<String, String> map = new HashMap<>();
+        for(PropertySource<?> propertySource : propertySources){
+            Map<String, Object> source = (Map<String, Object>)propertySource.getSource();
+            for(String key : source.keySet()){
+                if(key.contains(keyWord)){
+                    if(!map.containsKey(key) || isYml(propertySource.getName())){
+                        map.put(key, source.get(key).toString());
+                    }
+                }
+            }
+        }
+        return map;
+    }
+
+    private boolean isYml(final String name){
+        return name.contains(".yml") || name.contains(".yaml") || name.contains(".YML") || name.contains(".YAML");
+    }
+
+    private void filterBootstrapConfig(final Collection<PropertySource<?>> bootstrapPropertySrouces, final PropertySource<?> reedPropertySource){
+        for(PropertySource<?> bootstrapPropertySource : bootstrapPropertySrouces){
+            Map<String, Object> bootstrapConfig = (Map<String, Object>)bootstrapPropertySource.getSource();
+            for(String key : bootstrapConfig.keySet()){
+                if(reedPropertySource.containsProperty(key) || System.getProperties().containsKey(key)){
+                    synchronized (bootstrapPropertySource){
+                        bootstrapConfig.put(key, reedPropertySource.containsProperty(key)?reedPropertySource.getProperty(key):System.getProperty(key));
+                        if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+                            System.out.println(EnderUtil.getDevInfo() + " - bootstrap[" + key + "] has been updated :"+bootstrapConfig.get(key));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void handleBootstrapPropertySources(final Collection<PropertySource<?>> bootstrapPropertySources){
+//        for(PropertySource<?> bootstrapPropertySource)
+    }
+
+//    private int handleReedPattern(PropertySource<?> propertySource){
+//        int counter = 0;
+//        Map<String, Object> config = (LinkedHashMap)propertySource.getSource();
+//        Iterator<Map.Entry<String, Object>> iterator = config.entrySet().iterator();
+//        while(iterator.hasNext()){
+//            Map.Entry<String, Object> entry = iterator.next();
+//            String key = entry.getKey();
+//            //ignore config starts with some prefix
+//            if(key.contains(SpringBootBootup.DOT)){
+//                String prefix = key.split("\\"+SpringBootBootup.DOT)[0];
+//                boolean removed = false;
+//                for(String pre : SpringBootBootup.IGNORE_PREFIX){
+//                    if(pre.equalsIgnoreCase(prefix)){
+//                        Object value = config.get(key);
+//                        iterator.remove();
+//                        if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+//                            System.out.println(EnderUtil.getDevInfo() + " - Reed Framework Has Removed [" + key + "=" + value + "] From Configuration File When It Loaded!");
+//                        }
+//                        removed = config.containsKey(key);
+//                        break;
+//                    }
+//                }
+//                if(removed){
+//                    counter++;
+//                    continue;
+//                }
+//            }
+//            String value = config.get(key).toString();
+//            if(StringUtil.isContains(StringUtil.Reed_ENV, value)){ //读取自定义标识ReedEnv{} 匹配成功则表示要去环境变量中读取ReedEnv{}中的值
+//                if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+//                    System.out.println(EnderUtil.getDevInfo() + " - found Matched Pattern[" + StringUtil.Reed_ENV.toString() + "] in " + value);
+//                }
+//                List<String> matchedList = StringUtil.getMatched(StringUtil.Reed_ENV, value);
+//                for(String str : matchedList){
+//                    if(!StringUtil.isEmpty(str)){
+//                        if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+//                            System.out.println(EnderUtil.getDevInfo() + " - placeholder[" + str + "]");
+//                        }
+//                        String envKey = StringUtil.extractVal(str);
+//                        if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+//                            System.out.println(EnderUtil.getDevInfo() + " - extract environment key from placeholder[" + str + "] as " + envKey);
+//                        }
+//                        String envVal = System.getenv(envKey);
+//                        envVal = envVal == null?"":envVal;
+//                        if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+//                            System.out.println(EnderUtil.getDevInfo() + " - get environment: " + envKey + "=" + envVal);
+//                        }
+//                        if(!StringUtil.isEmpty(envVal)){
+//                            if(StringUtil.isMatched(StringUtil.Reed_CIPHER, envVal)){
+//                                envVal = StringUtil.decryptCiphertext(envVal, DESUtil.DEFAULT_SECURITY_CODE);
+//                            }
+//                            value = value.replace(str, envVal);
+//                            updateSysEnv(config, key, value);
+//                            counter++;
+//                            if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+//                                System.out.println(EnderUtil.getDevInfo() + " After SetEnv -> EnvKey:" + key + ", EnvVal:" + config.get(key).toString() + ", EnvValInstance:" + config.get(key).getClass());
+//                            }
+//                        }else{
+//                            if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")){
+//                                System.out.println(EnderUtil.getDevInfo()+" - "+envKey+" is empty skip this line!");
+//                            }
+//                        }
+//                    }
+//                }
+//
+//            }
+//            if(StringUtil.isContains(StringUtil.Reed_CIPHER, value)){  //匹配到了加密串ReedCipher{xxx}
+//                value = StringUtil.decryptCiphertext(value, DESUtil.DEFAULT_SECURITY_CODE);
+//                updateSysEnv(config, key, value);
+//                counter++;
+//                if(!StringUtil.isEmpty(mode) && mode.equalsIgnoreCase("debug")) {
+//                    System.out.println(EnderUtil.getDevInfo() + " After SetEnv -> EnvKey:" + key + ", EnvVal:" + config.get(key).toString() + ", EnvValInstance:" + config.get(key).getClass());
+//                }
+//            }
+//
+//        }
+//        return counter;
+//    }
+//
+//
+//    private void updateSysEnv(final Map m, final String key, final String value){
+//        if(!StringUtil.isEmpty(System.getenv(key))){
+//            return;
+//        }
+//        synchronized (m){
+//            m.put(key, value);
+//        }
+//    }
+
+    private PropertySource<?> loadConfigration(Resource resource){
+        if(resource.exists()){
+            try{
+                List<PropertySource<?>> propertySourceList = this.reedLoader.load("reed", resource);
+                if(propertySourceList.size()>0){
+                    PropertySource<?> propertySource = propertySourceList.get(0);
+                    return propertySource;
+                }else{
+                    return null;
+                }
+            }catch(IOException e){
+                throw new IllegalStateException("Failed to load yaml configuration from reed.yml", e);
+            }
+        }else {
+            System.out.println("Reed-Framework Cannot Found reed.yaml. Do Nothing In This Section!");
+        }
+        return null;
+    }
+}
