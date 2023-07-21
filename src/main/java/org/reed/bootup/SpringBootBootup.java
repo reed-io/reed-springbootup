@@ -427,8 +427,8 @@ public abstract class SpringBootBootup extends ReedStarter implements WebApplica
         //this.putArgs("spring.boot.admin.client.password", "Eui2560@%^)");
         putArgs("ReedCipher{a3d3afefb0eafbbdb0c2789b8b11538912870c81d60f421c2d58fef4385eb5575ef3aa6d915f1e43}", "ReedCipher{2f8ab711c0397b48c7e8bab352a8977e}");
         //logfile viewer
-        putArgs("ReedCipher{15063b6c3a5bcc0058fded3aa11c98d7}", ReedContext.getString("user.dir")+ File.separator+"reedlog"+File.separator+getModuleName()+".log");
-        putArgs("ReedCipher{15063b6c3a5bcc007c9d2cfee9bb105858fded3aa11c98d7}", ReedLogger.DEFAULT_PATTERN);
+//        putArgs("ReedCipher{15063b6c3a5bcc0058fded3aa11c98d7}", ReedContext.getString("user.dir")+ File.separator+"reedlog"+File.separator+getModuleName()+".log");
+//        putArgs("ReedCipher{15063b6c3a5bcc007c9d2cfee9bb105858fded3aa11c98d7}", ReedLogger.DEFAULT_PATTERN);
     }
 
     /**
